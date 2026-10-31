@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projector Clean Output</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      background: #000000;
+      overflow: hidden;
+      cursor: none; /* Hide cursor on projector screen */
+    }
+    #warpCanvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .hint {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      font-family: monospace;
+      font-size: 12px;
+      pointer-events: none;
+      transition: opacity 2s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="hint" id="hint">F11 — во весь экран. Управление в главном окне.</div>
+  <canvas id="warpCanvas"></canvas>
+
+  <script src="warp-engine.js"></script>
+  <script src="patterns.js"></script>
+  <script>
+    const canvas = document.getElementById('warpCanvas');
+    const hint = document.getElementById('hint');
+    const engine = new WarpEngine(canvas);
+    const patterns = new PatternGenerators();
+
+    let surfaces = [];
+
+    // Hide hint after 4 seconds
+    setTimeout(() => {
+      hint.style.opacity = '0';
+    }, 4000);
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Load initial state
+    try {
+      const saved = localStorage.getItem('projection_mapping_surfaces');
+      if (saved) {
+        surfaces = JSON.parse(saved);
+      }
+    } catch(e) {}
+
+    // Listen to live synchronization from main window
+    const broadcast = new BroadcastChannel('projection_mapping_sync');
+    broadcast.onmessage = (event) => {
+      if (event.data && event.data.type === 'SYNC_STATE') {
+        surfaces = event.data.surfaces || [];
+      }
+    };
+
+    // Render loop
+    function loop(time) {
+      const sourcesMap = new Map();
+      surfaces.forEach(s => {
+        if (!s.enabled) return;
+        // Generate patterns or render fallback
+        sourcesMap.set(s.id, patterns.renderPattern(s, time));
+      });
+
+      engine.render(surfaces, sourcesMap);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // Click to enter fullscreen
+    window.addEventListener('dblclick', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+  </script>
+</body>
+</html>

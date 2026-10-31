@@ -1,0 +1,12 @@
+{
+  "name": "projection-mapping-web",
+  "version": "1.0.0",
+  "description": "Lightweight Browser-Based Projection Mapping & Quad Warper for Projectors",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["projection-mapping", "video-mapping", "quad-warp", "projector", "webgl"],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projection Mapping Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Floating Quick Bar -->
+    <div class="quick-bar" id="quickBar">
+      <button class="quick-btn" id="btnToggleUI" title="Скрыть интерфейс (Горячая клавиша: H)">
+        👁️ Скрыть UI [H]
+      </button>
+      <button class="quick-btn" id="btnFullscreen" title="Полноэкранный режим (Горячая клавиша: F)">
+        ⛶ Полный экран [F]
+      </button>
+      <button class="quick-btn" id="btnFit169" title="Сбросить в 16:9 по центру экрана">
+        📐 16:9
+      </button>
+      <button class="quick-btn" id="btnOpenProjector" title="Открыть чистое окно для проектора без элементов управления">
+        📽️ Окно проектора
+      </button>
+    </div>
+
+    <!-- Mapping Canvas Area -->
+    <div class="canvas-wrapper">
+      <canvas id="warpCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+    </div>
+
+    <!-- Sidebar Control Panel -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <h1>PROJECTION MAPPER</h1>
+          <span class="brand-badge">WebGL</span>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll">
+        <!-- Surfaces Manager -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>Поверхности (Quads)</span>
+            <div class="btn-group">
+              <button class="btn btn-primary btn-icon" id="btnAddSurface" title="Добавить новую поверхность">+</button>
+              <button class="btn btn-danger btn-icon" id="btnDeleteSurface" title="Удалить активную поверхность">🗑️</button>
+            </div>
+          </div>
+          <div class="surface-list" id="surfacesList"></div>
+        </div>
+
+        <!-- Selected Surface Controls -->
+        <div class="panel-section">
+          <div class="section-title">Настройки поверхности</div>
+
+          <div class="form-group">
+            <label class="form-label">Название</label>
+            <input type="text" class="form-input" id="surfaceName" placeholder="Поверхность 1">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Источник контента</label>
+            <select class="form-select" id="sourceType">
+              <optgroup label="Калибровочные тесты">
+                <option value="grid">🎯 Сетка калибровки (Crosshairs)</option>
+                <option value="tunnel">🌌 Киберпанк Неоновый Тоннель</option>
+                <option value="matrix">💻 Матрица (Digital Rain)</option>
+                <option value="plasma">🌈 Радужная Плазма</option>
+                <option value="clock">⏱️ Неоновые Цифровые Часы</option>
+                <option value="solid_white">⚪ Белая заливка</option>
+                <option value="solid_red">🔴 Красная заливка</option>
+                <option value="solid_green">🟢 Зеленая заливка</option>
+                <option value="solid_blue">🔵 Синяя заливка</option>
+                <option value="solid_black">⚫ Черная заливка</option>
+              </optgroup>
+              <optgroup label="Пользовательский медиа">
+                <option value="custom">📁 Файл видео / фото / камера / экран</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- File Upload (shown when custom selected) -->
+          <div class="form-group" id="fileUploadGroup" style="display: none;">
+            <label class="form-label">Загрузить файл (видео или фото)</label>
+            <input type="file" class="form-input" id="fileInput" accept="video/*,image/*">
+          </div>
+
+          <!-- Live Capture (shown when custom selected) -->
+          <div class="form-group" id="liveCaptureGroup" style="display: none;">
+            <label class="form-label">Живой захват</label>
+            <div class="btn-group">
+              <button class="btn btn-secondary" id="btnStartCam" style="flex:1;">📷 Камера</button>
+              <button class="btn btn-secondary" id="btnStartScreen" style="flex:1;">🖥️ Экран</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">
+              <span>Прозрачность (Opacity)</span>
+              <span id="opacityVal">100%</span>
+            </div>
+            <input type="range" class="range-slider" id="opacityInput" min="0" max="1" step="0.01" value="1">
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">
+              <span>Яркость</span>
+              <span id="brightnessVal">0</span>
+            </div>
+            <input type="range" class="range-slider" id="brightnessInput" min="-1" max="1" step="0.05" value="0">
+          </div>
+
+          <div class="form-group">
+            <div class="form-label">
+              <span>Контраст</span>
+              <span id="contrastVal">1.0</span>
+            </div>
+            <input type="range" class="range-slider" id="contrastInput" min="0.2" max="3" step="0.1" value="1">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Режим смешивания (Blend Mode)</label>
+            <select class="form-select" id="blendMode">
+              <option value="normal">Normal (Обычный)</option>
+              <option value="add">Add (Сложение свечения)</option>
+              <option value="screen">Screen (Осветление)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="display: flex; gap: 15px; margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="flipH"> Отзеркалить по гор.
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="flipV"> Отзеркалить по верт.
+            </label>
+          </div>
+        </div>
+
+        <!-- Corner Pin Coordinates & Calibration -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>Углы маппинга (Пиксели)</span>
+            <button class="btn btn-secondary" id="btnResetCorners" style="padding: 4px 8px; font-size: 0.75rem;">Сброс</button>
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+            Кликните угол на экране или выберите ниже, затем двигайте <b>Стрелками</b> (Shift = 10px):
+          </div>
+          <div class="pin-nudge-box">
+            <div class="pin-badge tl" id="pinTL">
+              <span>🔴 TL [1]</span>
+              <span class="coords">0, 0</span>
+            </div>
+            <div class="pin-badge tr" id="pinTR">
+              <span>🟢 TR [2]</span>
+              <span class="coords">0, 0</span>
+            </div>
+            <div class="pin-badge bl" id="pinBL">
+              <span>🟡 BL [4]</span>
+              <span class="coords">0, 0</span>
+            </div>
+            <div class="pin-badge br" id="pinBR">
+              <span>🔵 BR [3]</span>
+              <span class="coords">0, 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presets & Storage -->
+        <div class="panel-section">
+          <div class="section-title">Сохранение и пресеты</div>
+          <div class="btn-group">
+            <button class="btn btn-secondary" id="btnSavePreset" style="flex: 1;">💾 Скачать JSON</button>
+            <button class="btn btn-secondary" id="btnLoadPreset" style="flex: 1;">📂 Загрузить</button>
+            <input type="file" id="presetFileInput" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Hotkey Reference -->
+        <div class="panel-section">
+          <div class="section-title">Горячие клавиши</div>
+          <div class="hotkeys-list">
+            <span class="key-kbd">H</span>
+            <span>Скрыть / показать всё меню</span>
+
+            <span class="key-kbd">F</span>
+            <span>Полный экран (Fullscreen)</span>
+
+            <span class="key-kbd">Tab / 1-4</span>
+            <span>Выбрать угол (TL, TR, BR, BL)</span>
+
+            <span class="key-kbd">Стрелки</span>
+            <span>Точная подгонка угла на 1px</span>
+
+            <span class="key-kbd">Shift+Стрелки</span>
+            <span>Быстрая подгонка на 10px</span>
+
+            <span class="key-kbd">[ / ]</span>
+            <span>Предыдущая / следующая поверхность</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Уведомление</div>
+
+  <script src="warp-engine.js"></script>
+  <script src="patterns.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
